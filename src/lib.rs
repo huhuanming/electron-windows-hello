@@ -45,6 +45,8 @@ impl Task for AvailabilityTask {
 
     fn compute(&mut self) -> Result<Self::Output> {
         let _apartment = Apartment::initialize()?;
+        let _verifier =
+            factory::<UserConsentVerifier, IUserConsentVerifierInterop>().map_err(windows_error)?;
         UserConsentVerifier::CheckAvailabilityAsync()
             .and_then(|operation| operation.join())
             .map(|availability| availability.0)

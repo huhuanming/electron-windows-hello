@@ -27,7 +27,7 @@ const verified = result === VerificationResult.Verified;
 ```
 
 `checkAvailability()` resolves to a value in `Availability`: `Available`, `DeviceNotPresent`, `NotConfiguredForUser`, `DisabledByPolicy`, or `DeviceBusy`.
-It returns `DeviceNotPresent` on unsupported operating systems and architectures, without loading a native binary. Windows API failures reject the promise.
+It first probes the window-owned `IUserConsentVerifierInterop` interface at runtime, without showing a verification dialog. It returns `DeviceNotPresent` on unsupported operating systems and architectures, without loading a native binary. An unavailable interop interface or Windows API failure rejects the promise; applications should offer their normal password authentication instead.
 
 `requestVerification({ windowHandle, message })` requires a fresh, 8-byte `Buffer` from `BrowserWindow.getNativeWindowHandle()` and a non-empty message. It resolves to a value in `VerificationResult`: `Verified`, `Canceled`, `DeviceBusy`, `DeviceNotPresent`, `NotConfiguredForUser`, `DisabledByPolicy`, or `RetriesExhausted`.
 Only `Verified` authorizes the operation. An overlapping request returns `DeviceBusy` and does not share another request's authorization.
@@ -61,7 +61,8 @@ WinRT is initialized and awaited on a libuv worker, so verification does not blo
 
 - Windows x64 and ARM64; both native binaries ship in the same package and are selected using `process.arch`.
 - Node.js 20.17 or later, including Electron runtimes with Node-API 8 support.
-- Window-owned verification uses `IUserConsentVerifierInterop::RequestVerificationForWindowAsync`, documented for Windows build 22000 and later. There is no silent fallback to an unowned verification dialog.
+- Windows 10 and 11 use the same window-owned `IUserConsentVerifierInterop::RequestVerificationForWindowAsync` path, selected by runtime interface availability rather than an OS version check. Microsoft's method documentation lists build 22000, while its [CsWinRT implementation](https://github.com/microsoft/CsWinRT/blob/master/src/cswinrt/strings/ComInteropHelpers.cs) and [Electron sample](https://github.com/microsoft/dynwinrt/tree/main/samples/js/windows-hello) indicate Windows 10 support. Windows 11 interaction has been manually verified; Windows 10 interaction testing is still pending, so no minimum Windows 10 build is claimed.
+- There is no silent fallback to an unowned verification dialog. If availability fails, offer the application's normal password authentication. Cancellation, unsuccessful verification, and native errors never cause an automatic retry; a new Hello attempt must be explicitly initiated by the user.
 - No credential storage, account management, key generation, signing, PIN collection, or custom authentication UI.
 
 ## Development and release
