@@ -50,6 +50,8 @@ helloProcess.postMessage({
 });
 ```
 
+Wait for the owner to be focused before dispatching. If `mainWindow.isFocused()` is false, defer verification until a user-initiated window activation. `show()` and `focus()` alone do not guarantee that Windows grants foreground permission.
+
 In the utility process, reconstruct the handle with `Buffer.from(data.windowHandle)` and call `requestVerification` with that buffer. Always send a result or error back to the caller.
 Do not convert the handle to a JavaScript number or discover the owner by querying an unrelated foreground window.
 

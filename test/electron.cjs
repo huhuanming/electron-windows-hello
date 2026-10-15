@@ -37,19 +37,30 @@ if (process.type === "utility") {
       assert.equal(owner.getNativeWindowHandle().length, 8);
       worker = utilityProcess.fork(__filename);
       worker.once("spawn", () => {
+        const dispatch = () => {
+          if (interactive) {
+            console.log(
+              JSON.stringify({
+                ownerFocusedBeforeRequest: owner.isFocused(),
+                foregroundGranted: api.allowSetForegroundWindow(worker.pid),
+              }),
+            );
+          }
+          worker.postMessage({
+            interactive,
+            windowHandle: Array.from(owner.getNativeWindowHandle()),
+          });
+        };
         if (interactive) {
           owner.show();
           owner.focus();
-          console.log(
-            JSON.stringify({
-              foregroundGranted: api.allowSetForegroundWindow(worker.pid),
-            }),
-          );
+          if (!owner.isFocused()) {
+            console.log("Activate the test window to request Windows Hello");
+            owner.once("focus", dispatch);
+            return;
+          }
         }
-        worker.postMessage({
-          interactive,
-          windowHandle: Array.from(owner.getNativeWindowHandle()),
-        });
+        dispatch();
       });
       worker.once("message", (message) => {
         console.log(
